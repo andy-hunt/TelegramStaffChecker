@@ -114,6 +114,9 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
         for (WorkInfo workInfo : workInfoMap.values()) {
             workInfo.editMessage(this, allPersons);
         }
+        for (Long chatId : chatIds) {
+            sendTextMsg(chatId, "A minute later, the daily begins. Do not forget to connect via Skype!");
+        }
     }
 
     @Override
