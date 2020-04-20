@@ -13,7 +13,7 @@ public class RemindCommand extends BotCommand {
     private final Configurable configurableChat;
 
     public RemindCommand(Configurable configurableChat) {
-        super("remind", "Remind now!\n");
+        super("remind", "Remind now!!\n");
         this.configurableChat = configurableChat;
     }
 
