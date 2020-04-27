@@ -24,7 +24,7 @@ import java.util.TimeZone;
  */
 public class BotMain {
     public static final String REMIND_CRON = "0 59 8 ? * MON-FRI";
-    public static final String REPEAT_CRON = "0 29 10 ? * MON-FRI";
+    public static final String REPEAT_CRON = "0 27 10 ? * MON-FRI";
     public static final String DEBUG_CRON = "0 02 12 ? * MON-FRI"; //"0 0/1 0 ? * * *"; //каждую 1 минуту
     public static final String JOB_GROUP = "group";
 
