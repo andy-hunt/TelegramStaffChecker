@@ -24,8 +24,10 @@ import java.util.TimeZone;
  */
 public class BotMain {
     public static final String REMIND_CRON = "0 59 8 ? * MON-FRI";
-    public static final String REPEAT_CRON = "0 27 10 ? * MON-FRI";
+    public static final String REPEAT_CRON = "0 57 10 ? * MON-FRI";
     public static final String DEBUG_CRON = "0 02 12 ? * MON-FRI"; //"0 0/1 0 ? * * *"; //каждую 1 минуту
+    public static final String NEXT_DAY_JOB_CRON = "0 0 18 ? * SUN-THU";
+    public static final String NEXT_DAY_SUMMARY_JOB_CRON = "0 0 6 ? * MON-FRI";
     public static final String JOB_GROUP = "group";
 
     public static void main(String[] args) throws Exception {
@@ -57,6 +59,8 @@ public class BotMain {
         scheduler.start();
         remindJob(bot, scheduler);
         repeatJob(bot, scheduler);
+        nextDayJob(bot, scheduler);
+        nextDaySummaryJob(bot, scheduler);
     }
 
     private static void remindJob(Configurable bot, Scheduler scheduler) throws SchedulerException {
@@ -81,6 +85,28 @@ public class BotMain {
         scheduler.scheduleJob(job, trigger);
     }
 
+    private static void nextDayJob(Configurable bot, Scheduler scheduler) throws SchedulerException {
+        JobDataMap newJobDataMap = new JobDataMap();
+        newJobDataMap.put("bot", bot);
+        JobDetail job = JobBuilder.newJob(NextDayJob.class).withIdentity("nextDayJob", JOB_GROUP)
+                .usingJobData(newJobDataMap).build();
+        TimeZone timeZone = TimeZone.getTimeZone("Europe/Moscow");
+        Trigger trigger = TriggerBuilder.newTrigger().withIdentity("nextDayCronTrigger", JOB_GROUP)
+                .withSchedule(CronScheduleBuilder.cronSchedule(NEXT_DAY_JOB_CRON).inTimeZone(timeZone)).build();
+        scheduler.scheduleJob(job, trigger);
+    }
+
+    private static void nextDaySummaryJob(Configurable bot, Scheduler scheduler) throws SchedulerException {
+        JobDataMap newJobDataMap = new JobDataMap();
+        newJobDataMap.put("bot", bot);
+        JobDetail job = JobBuilder.newJob(NextDaySummaryJob.class).withIdentity("nextDaySummaryJob", JOB_GROUP)
+                .usingJobData(newJobDataMap).build();
+        TimeZone timeZone = TimeZone.getTimeZone("Europe/Moscow");
+        Trigger trigger = TriggerBuilder.newTrigger().withIdentity("nextDaySummaryCronTrigger", JOB_GROUP)
+                .withSchedule(CronScheduleBuilder.cronSchedule(NEXT_DAY_SUMMARY_JOB_CRON).inTimeZone(timeZone)).build();
+        scheduler.scheduleJob(job, trigger);
+    }
+
     public static class RemindJob implements Job {
 
         @Override
@@ -96,6 +122,24 @@ public class BotMain {
         public void execute(JobExecutionContext context) {
             DinnerBot bot = (DinnerBot) context.getMergedJobDataMap().get("bot");
             bot.sendRepeatRemind();
+        }
+    }
+
+    public static class NextDayJob implements Job {
+
+        @Override
+        public void execute(JobExecutionContext context) {
+            DinnerBot bot = (DinnerBot) context.getMergedJobDataMap().get("bot");
+            bot.sendVoteNextDay();
+        }
+    }
+
+    public static class NextDaySummaryJob implements Job {
+
+        @Override
+        public void execute(JobExecutionContext context) {
+            DinnerBot bot = (DinnerBot) context.getMergedJobDataMap().get("bot");
+            bot.sendResultsVoteNextDay();
         }
     }
 }

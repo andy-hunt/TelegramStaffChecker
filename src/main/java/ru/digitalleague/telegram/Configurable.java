@@ -10,6 +10,7 @@ public interface Configurable {
     void configChat(Long chatId);
     void editMessage(EditMessageText editMessageTextCmd);
     void sendRemind();
-
+    void sendVoteNextDay();
+    void sendResultsVoteNextDay();
     void sendRepeatRemind();
 }

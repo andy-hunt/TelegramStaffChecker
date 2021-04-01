@@ -25,11 +25,16 @@ public class WorkInfo {
     private Message remindMessage;
     private Long channelId;
     private Map<Integer, PersonTodayInfo> personsMap = Maps.newHashMap();
-    private Set<PersonTodayInfo> allPersons = null;
+    private String msg = "In {0} working today: {1} \n";
 
     public WorkInfo(Long channelId, Message remindMessage) {
         this.channelId = channelId;
         this.remindMessage = remindMessage;
+    }
+
+    public WorkInfo(Long channelId, Message remindMessage, String msg) {
+        this(channelId, remindMessage);
+        this.msg = msg;
     }
 
     public WorkInfo onTextMessage(Message message, Configurable bot) {
@@ -39,18 +44,13 @@ public class WorkInfo {
         Optional<Location> location = Location.findByCode(msg);
         if (location.isPresent()) {
             personsMap.put(userId, new PersonTodayInfo(userId, userFrom, location.get()));
-            editMessage(bot);
+            editMessage(bot, null);
         }
         return this;
     }
 
-    public void editMessage(Configurable bot) {
-        editMessage(bot, null);
-    }
-
-    public void editMessage(Configurable bot, Set<PersonTodayInfo> allPersonsNew) {
+    public void editMessage(Configurable bot, Set<PersonTodayInfo> all) {
         if (remindMessage != null) {
-            allPersons = allPersonsNew == null ? allPersons : allPersonsNew;
             String oldText = remindMessage.getText();
             String newText = oldText + "\n";
             Map<Location, List<PersonTodayInfo>> locationMap = Maps.newHashMap();
@@ -65,10 +65,10 @@ public class WorkInfo {
             for (Map.Entry<Location, List<PersonTodayInfo>> entry : locationMap.entrySet()) {
                 Location location = entry.getKey();
                 String personTodayInfos = entry.getValue().stream().map(v -> username(v)).collect(Collectors.joining(", "));
-                newText += MessageFormat.format("In {0} working today: {1} \n", location.getCode(), personTodayInfos);
+                newText += MessageFormat.format(msg, location.getCode(), personTodayInfos);
             }
-            if (allPersons != null) {
-                Sets.SetView<PersonTodayInfo> lostUsers = Sets.difference(allPersons, Sets.newHashSet(personsMap.values()));
+            if (all != null) {
+                Sets.SetView<PersonTodayInfo> lostUsers = Sets.difference(all, Sets.newHashSet(personsMap.values()));
                 if (!lostUsers.isEmpty()) {
                     String lostUsersStr = lostUsers.stream().map(PersonTodayInfo::getUsername).collect(Collectors.joining(", "));
                     newText += MessageFormat.format("Lost people: {0} \n", lostUsersStr);

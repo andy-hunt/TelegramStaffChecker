@@ -16,6 +16,7 @@ import ru.digitalleague.telegram.cmd.ConfigCommand;
 import ru.digitalleague.telegram.cmd.HelpCommand;
 import ru.digitalleague.telegram.cmd.RemindCommand;
 import ru.digitalleague.telegram.cmd.RepeatCommand;
+import ru.digitalleague.telegram.cmd.VoteNextDayCommand;
 import ru.digitalleague.telegram.work.Location;
 import ru.digitalleague.telegram.work.WorkInfo;
 
@@ -32,9 +33,11 @@ import java.util.stream.Stream;
  */
 public class DinnerBot extends TelegramLongPollingCommandBot implements Configurable {
     private static final String BOT_NAME = "phosagro_liga_bot";
+    private static final String NEXT_DAY_MSG = "On {0} tomorrow will work: {1} \n";
 
     private Set<Long> chatIds = new HashSet<>();
     private Map<Long, WorkInfo> workInfoMap = Maps.newHashMap();
+    private Map<Long, WorkInfo> voteNextDayInfoMap = Maps.newHashMap();
     private Set<WorkInfo.PersonTodayInfo> allPersons = Sets.newHashSet();
 
     public DinnerBot(DefaultBotOptions options) {
@@ -45,6 +48,7 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
         register(new ConfigCommand( this));
         register(new RemindCommand( this));
         register(new RepeatCommand( this));
+        register(new VoteNextDayCommand( this));
 
         registerDefaultAction(((absSender, message) -> {
             SendMessage text = new SendMessage();
@@ -66,7 +70,7 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
     public void processNonCommandUpdate(Update update) {
         Message message = update.getMessage();
         Long chatId = message.getChatId();
-        if (message.getChat().isGroupChat()) {
+        if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
             if (BOT_NAME.equals(Optional.ofNullable(message.getLeftChatMember()).map(User::getUserName).orElse(null))) {
                 removeFromChat(chatId);
             } else if (Optional.ofNullable(message.getNewChatMembers()).map(List::stream).orElse(Stream.<User>empty())
@@ -75,7 +79,10 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
             } else if (message.getText() != null && chatIds.contains(message.getChatId())) {
                 WorkInfo workInfo = workInfoMap.get(message.getChatId());
                 workInfo.onTextMessage(message, this);
+                WorkInfo nextDayWorkInfo = voteNextDayInfoMap.get(message.getChatId());
+                nextDayWorkInfo.onTextMessage(message, this);
                 this.allPersons.addAll(workInfo.getPersonsMap().values());
+                this.allPersons.addAll(nextDayWorkInfo.getPersonsMap().values());
             }
         }
 //        sendTextMsg(chatId, "I will remind you about work! And about dinner)");
@@ -84,12 +91,14 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
     public void removeFromChat(Long chatId) {
         chatIds.remove(chatId);
         workInfoMap.remove(chatId);
+        voteNextDayInfoMap.remove(chatId);
     }
 
     @Override
     public void configChat(Long chatId) {
         chatIds.add(chatId);
         workInfoMap.put(chatId, new WorkInfo(chatId, null));
+        voteNextDayInfoMap.put(chatId, new WorkInfo(chatId, null, NEXT_DAY_MSG));
     }
 
     @Override
@@ -112,10 +121,28 @@ public class DinnerBot extends TelegramLongPollingCommandBot implements Configur
     @Override
     public void sendRepeatRemind() {
         for (WorkInfo workInfo : workInfoMap.values()) {
-            workInfo.editMessage(this, allPersons);
+            workInfo.editMessage(this, this.allPersons);
         }
         for (Long chatId : chatIds) {
-            sendTextMsg(chatId, "A minute later, the daily begins. Do not forget to connect via Skype! https://meet.phosagro.ru/zshalimova/2MSL2L3G");
+            sendTextMsg(chatId, "A minute later, the daily begins. Do not forget to connect via Skype! https://meet.phosagro.ru/aignatyuk/HL2Q1KM1");
+        }
+    }
+
+    @Override
+    public void sendVoteNextDay() {
+        for (Long chatId : chatIds) {
+            Message message = sendTextMsg(chatId, "Who works where tomorrow?\n " + StringUtils.join(Location.values(), ", " + "\n"));
+            voteNextDayInfoMap.put(chatId, new WorkInfo(chatId, message, NEXT_DAY_MSG));
+        }
+    }
+
+    @Override
+    public void sendResultsVoteNextDay() {
+        for (WorkInfo workInfo : voteNextDayInfoMap.values()) {
+            workInfo.editMessage(this, this.allPersons);
+        }
+        for (Long chatId : chatIds) {
+            sendTextMsg(chatId, "Summing up the voting results, who works where tomorrow.");
         }
     }
 
